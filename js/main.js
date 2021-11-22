@@ -726,6 +726,7 @@ class TheLoaiTruyen extends ThongTinBlog {
     var website = this.website()[arrTheloai.hostName];
     var setting = this.setting();
     $("#post-wrapper strong").html(getUrlTheloai);
+    $('title').html(getUrlTheloai);
 
     console.log(website);
 
