@@ -1,4 +1,41 @@
 class Function {
+  static time_ago(e) {
+    switch (typeof e) {
+      case "number":
+        break;
+      case "string":
+        e = +new Date(e);
+        break;
+      case "object":
+        e.constructor === Date && (e = e.getTime());
+        break;
+      default:
+        e = +new Date();
+    }
+    var t = [
+        [60, "giây", 1],
+        [3600, "phút", 60],
+        [86400, "giờ", 3600],
+        [172800, "Hôm qua", "Tomorrow"],
+        [604800, "ngày", 86400],
+        [2419200, "tuần", 604800],
+        [29030400, "tháng", 2419200],
+        [290304e4, "năm", 29030400],
+        [580608e5, "thế kỉ", 290304e4],
+      ],
+      r = (+new Date() - e) / 1e3,
+      a = "trước",
+      n = 1;
+    if (0 == r) return "Vừa cập nhật";
+    0 > r && ((r = Math.abs(r)), (a = "from now"), (n = 2));
+    for (var o, c = 0; (o = t[c++]); )
+      if (r < o[0])
+        return "string" == typeof o[2]
+          ? o[n]
+          : Math.floor(r / o[2]) + " " + o[1] + " " + a;
+    return e;
+  }
+
   static getQueryVariable(variable) {
     var query = window.location.search.substring(1);
     var vars = query.split("&");
@@ -121,6 +158,7 @@ class Main {
     new TrangThongTin();
     new DocTruyen();
     new TheLoaiTruyen();
+    new Lichsudoctruyen();
   }
 }
 
@@ -158,14 +196,15 @@ class ThongTinBlog {
         patname: "/book/trx/xxx.html",
         urlGettruyen: "https://www.trxs.cc/tongren/",
         idgetTruyen: {
-          url: ".books.m-cols .bk a",
-          title: ".infos h3",
-          image: ".pic img",
+          data: ".books.m-cols .bk",
+          url: "a",
+          title: "a .infos h3",
+          image: "a .pic img",
         },
         getPage: {
           id: ".content .page a",
           link: "https://www.trxs.cc/tongren/index_2.html",
-          linkMau: "http://www.trxs.cc/tongren/index_[page].html",
+          linkMau: "https://www.trxs.cc/tongren/index_[page].html",
           suaLink: {
             sua: /https:\/\/www\.trxs\.cc\/tongren\/index_(.*?)\.html/gi,
             doi: 1,
@@ -196,6 +235,54 @@ class ThongTinBlog {
           },
         },
         type: "listchapter",
+        reverseChapter: false,
+        translate: true,
+      },
+      www_uukanshu_com: {
+        url: "https://www.uukanshu.com",
+        patname: "/book/uu/xxx.html",
+        urlGettruyen: "https://www.uukanshu.com/list/erciyuan-1.html",
+        idgetTruyen: {
+          data: ".wrapper .content span.list-item",
+          url: "a.bookImg",
+          title: ".book-info h3",
+          image: ".bookImg img",
+        },
+        getPage: {
+          id: "#page a",
+          link: "https://www.uukanshu.com/list/erciyuan-1.html",
+          linkMau: "https://www.uukanshu.com/list/erciyuan-[page].html",
+          suaLink: {
+            sua: /https:\/\/www\.uukanshu\.com\/list\/erciyuan\-(.*?)\.html/gi,
+            doi: 1,
+          },
+          name: "Mạt trang",
+          total: 1,
+        },
+        booktruyen: {
+          listchapter: "ul#chapterList li a",
+          image: ".bookImg img",
+          title: ".jieshao_content h1 a",
+          noidung: ".jieshao_content h3",
+        },
+        doctruyen: {
+          noidung: "#contentbox",
+          title: ".h1title h1#timu",
+          homelink: {
+            id: ".fanye_cen span a",
+            name: "Mục lục",
+          },
+          nextchap: {
+            id: ".fanye_cen span a",
+            name: "Chương sau",
+          },
+          prevchap: {
+            id: ".fanye_cen span a",
+            name: "Chương trước",
+          },
+        },
+        type: "listchapter",
+        reverseChapter: true,
         translate: true,
       },
     };
@@ -205,9 +292,21 @@ class ThongTinBlog {
     return {
       "Đồng Nhân": {
         linkGet: "https://www.trxs.cc/tongren/",
-        linkPage: "http://www.trxs.cc/tongren/index_[page].html",
+        linkPage: "https://www.trxs.cc/tongren/index_[page].html",
         hostName: "www_trxs_cc",
         name: "dong-nhan",
+      },
+      "Nhị thứ nguyên Uukan": {
+        linkGet: "https://www.uukanshu.com/list/erciyuan-1.html",
+        linkPage: "https://www.uukanshu.com/list/erciyuan-[page].html",
+        hostName: "www_uukanshu_com",
+        name: "nhi-thu-nguyen-uukan",
+      },
+      "Nữ sinh đồng nhân Uukan": {
+        linkGet: "https://www.uukanshu.com/list/tongren-1.html",
+        linkPage: "https://www.uukanshu.com/list/tongren-[page].html",
+        hostName: "www_uukanshu_com",
+        name: "nu-sinh-dong-nhan-uukan",
       },
     };
   }
@@ -230,6 +329,7 @@ class ThongTinBlog {
         .text()
         .trim();
       storage[getHostName].linkchapter = location.pathname;
+      storage[getHostName].time = new Date();
       localStorage.dataTruyen = JSON.stringify(storage);
       return;
     }
@@ -283,6 +383,7 @@ class TrangChu extends ThongTinBlog {
     var website = this.website();
     var keyWeb = Object.keys(website);
     var setting = this.setting();
+
     var findDropdow = $("#sort-filter a.dropdown-toggle").text().trim();
 
     localStorage.removeItem("clickDropdow");
@@ -296,6 +397,14 @@ class TrangChu extends ThongTinBlog {
         website = website[findDropdow];
         website.host = findDropdow;
         break;
+    }
+
+    if (localStorage.selecthost) {
+      website = this.website()[localStorage.selecthost];
+      website.host = localStorage.selecthost;
+      $("#sort-filter .dropdown-toggle").html(
+        `${localStorage.selecthost} <span class="caret"></span>`
+      );
     }
 
     var urlGet = website.translate
@@ -323,7 +432,9 @@ class TrangChu extends ThongTinBlog {
         var getContent = $(xhr).find("#contentframe").attr("srcdoc");
         var creatElement = document.createElement("html");
         creatElement.innerHTML = getContent;
-        var DataTruyen = creatElement.querySelectorAll(website.idgetTruyen.url);
+        var DataTruyen = creatElement.querySelectorAll(
+          website.idgetTruyen.data
+        );
 
         for (var index of DataTruyen) {
           var linkImage =
@@ -337,7 +448,7 @@ class TrangChu extends ThongTinBlog {
 
           var title = index.querySelector(website.idgetTruyen.title).innerText;
 
-          var linkdoc = btoa(index.href);
+          var linkdoc = btoa(index.querySelector(website.idgetTruyen.url));
 
           contentTruyen += `<div class="col-lg-4 col-md-6 col-sm-4 col-ms-6">
                 <a
@@ -390,6 +501,7 @@ class TrangChu extends ThongTinBlog {
 
       $("#sort-filter").trigger("click");
       localStorage.setItem("clickDropdow", true);
+      localStorage.setItem("selecthost", sort_text);
       new TrangChu();
       return false;
     });
@@ -488,29 +600,40 @@ class TrangThongTin extends ThongTinBlog {
       url: urlGet,
       type: "GET",
       success: (xhr) => {
-        var contentTruyen = "";
         var getContent = $(xhr).find("#contentframe").attr("srcdoc");
+
         var creatElement = document.createElement("html");
+
         creatElement.innerHTML = getContent;
+
         var innerContent = "";
+
         var listChapter = creatElement.querySelectorAll(
           website.booktruyen.listchapter
         );
+
+        //reverse Chapter:
+
+        if (website.reverseChapter) {
+          listChapter = [...listChapter].reverse();
+        }
+
         var noidung = creatElement.querySelector(
           website.booktruyen.noidung
         ).innerHTML;
-        var title = creatElement.querySelector(
-          website.booktruyen.title
-        ).innerText;
+
+        var title = creatElement
+          .querySelector(website.booktruyen.title)
+          .innerText.replace(/mới nhất chương/gi, "");
 
         var image =
           creatElement
-            .querySelector(website.idgetTruyen.image)
+            .querySelector(website.booktruyen.image)
             .src.indexOf(setting.findWebsite) == 0
             ? creatElement
-                .querySelector(website.idgetTruyen.image)
+                .querySelector(website.booktruyen.image)
                 .src.replace(setting.findWebsite, website.url)
-            : creatElement.querySelector(website.idgetTruyen.image).src;
+            : creatElement.querySelector(website.booktruyen.image).src;
 
         for (var index of listChapter) {
           innerContent += `<li class="row">
@@ -621,6 +744,7 @@ class DocTruyen extends ThongTinBlog {
     var setting = this.setting();
 
     console.log(website);
+
     $.ajax({
       url: urlGet,
       type: "GET",
@@ -726,7 +850,7 @@ class TheLoaiTruyen extends ThongTinBlog {
     var website = this.website()[arrTheloai.hostName];
     var setting = this.setting();
     $("#post-wrapper strong").html(getUrlTheloai);
-    $('title').html(getUrlTheloai);
+    $("title").html(getUrlTheloai);
 
     console.log(website);
 
@@ -756,7 +880,9 @@ class TheLoaiTruyen extends ThongTinBlog {
         var getContent = $(xhr).find("#contentframe").attr("srcdoc");
         var creatElement = document.createElement("html");
         creatElement.innerHTML = getContent;
-        var DataTruyen = creatElement.querySelectorAll(website.idgetTruyen.url);
+        var DataTruyen = creatElement.querySelectorAll(
+          website.idgetTruyen.data
+        );
 
         for (var index of DataTruyen) {
           var linkImage =
@@ -770,7 +896,7 @@ class TheLoaiTruyen extends ThongTinBlog {
 
           var title = index.querySelector(website.idgetTruyen.title).innerText;
 
-          var linkdoc = btoa(index.href);
+          var linkdoc = btoa(index.querySelector(website.idgetTruyen.url));
 
           contentTruyen += `<div class="col-lg-4 col-md-6 col-sm-4 col-ms-6">
                 <a
@@ -811,10 +937,34 @@ class TheLoaiTruyen extends ThongTinBlog {
   }
 
   paginnation(website, setting) {
+    var nameTheloai = $("#post-wrapper strong").text().trim();
+
+    var arrTheloai = this.theloaitruyen()[nameTheloai];
+
+    var linkGet = arrTheloai.linkGet;
+
+    var urlGet = website.translate ? setting.urlDich + linkGet : linkGet;
+
+    if (
+      Function.getQueryVariable("page") &&
+      +Function.getQueryVariable("page") > 1
+    ) {
+      urlGet = website.translate
+        ? setting.urlDich +
+          arrTheloai.linkPage.replace(
+            "[page]",
+            Function.getQueryVariable("page")
+          )
+        : arrTheloai.linkPage.replace(
+            "[page]",
+            Function.getQueryVariable("page")
+          );
+    }
+
+    //console.log(urlGet);
+
     $.ajax({
-      url: website.translate
-        ? setting.urlDich + website.getPage.link
-        : website.getPage.link,
+      url: urlGet,
       type: "GET",
       success: (xhr) => {
         var contentTruyen = "";
@@ -827,9 +977,12 @@ class TheLoaiTruyen extends ThongTinBlog {
             dataPage = data.href;
           }
         });
-        var decodeURIPage = +decodeURIComponent(dataPage).split(
-          website.getPage.suaLink.sua
-        )[website.getPage.suaLink.doi];
+
+        var splitLinkPage = arrTheloai.linkPage.split("[page]");
+
+        var decodeURIPage = +decodeURIComponent(dataPage)
+          .split(splitLinkPage[0])[1]
+          .split(splitLinkPage[1])[0];
         var totalPage = decodeURIPage;
 
         Function.paginnation({
@@ -848,6 +1001,44 @@ class TheLoaiTruyen extends ThongTinBlog {
         alert("Xin vui lòng cài đặt extension.");
       },
     });
+  }
+}
+
+class Lichsudoctruyen extends ThongTinBlog {
+  constructor() {
+    super();
+    this.ModalClick();
+    this.XuatLichsuTruyen();
+  }
+  ModalClick() {
+    $(document).on("hidden.bs.modal", ".modal", function () {
+      $(".modal-backdrop:visible").length &&
+        $(document.body).addClass("modal-open");
+    });
+  }
+  XuatLichsuTruyen() {
+    var ketqua = "";
+    var arrLichsu = localStorage.dataTruyen
+      ? JSON.parse(localStorage.dataTruyen)
+      : "";
+    var objectKey = Object.keys(arrLichsu);
+
+    for (var index of objectKey) {
+      var data = arrLichsu[index];
+      if (data.linkchapter) {
+        ketqua += `<a class="list-group-item" href="${data.linkchapter}"><b>${
+          data.title
+        } - ${data.chapter.trim()}</b><br><small>${
+          data.time ? Function.time_ago(data.time) : 0
+        }</small></a>`;
+      }
+    }
+
+    if (ketqua.length > 1) {
+      $("#list-history").html(ketqua);
+    }
+
+    console.log(ketqua);
   }
 }
 
